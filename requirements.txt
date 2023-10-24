@@ -4,6 +4,6 @@ pandas  # Required for Ray data.
 pyarrow  # Required for Ray data.
 sentencepiece  # Required for LLaMA tokenizer.
 numpy
-transformers >= 4.34.0  # Required for Mistral.
+transformers==4.33.2  # match TGI
 uvicorn[standard]
 pydantic < 2  # Required for OpenAI server.

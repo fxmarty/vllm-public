@@ -183,15 +183,15 @@ ext_modules.append(attention_extension)
 #ext_modules.append(positional_encoding_extension)
 
 # Layer normalization kernels.
-#layernorm_extension = CUDAExtension(
-    #name="vllm.layernorm_ops",
-    #sources=["csrc/layernorm.cpp", "csrc/layernorm_kernels.cu"],
-    #extra_compile_args={
-        #"cxx": CXX_FLAGS,
-        #"nvcc": NVCC_FLAGS,
-    #},
-#)
-#ext_modules.append(layernorm_extension)
+layernorm_extension = CUDAExtension(
+    name="vllm.layernorm_ops",
+    sources=["csrc/layernorm.cpp", "csrc/layernorm_kernels.cu"],
+    extra_compile_args={
+        "cxx": CXX_FLAGS,
+        "nvcc": NVCC_FLAGS,
+    },
+)
+ext_modules.append(layernorm_extension)
 
 # Activation kernels.
 #activation_extension = CUDAExtension(

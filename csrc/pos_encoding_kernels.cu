@@ -32,6 +32,9 @@ inline __device__ void apply_rotary_embedding(
 
   const scalar_t x = arr[x_index];
   const scalar_t y = arr[y_index];
+
+  printf("x_index: %d \n", x_index);
+  printf("y_index: %d \n", y_index);
   arr[x_index] = x * cos - y * sin;
   arr[y_index] = y * cos + x * sin;
 }

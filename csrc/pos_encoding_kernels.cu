@@ -38,10 +38,10 @@ inline __device__ void apply_rotary_embedding(
 
 template<typename scalar_t, bool IS_NEOX>
 __global__ void rotary_embedding_kernel(
-  scalar_t* __restrict__ query,                 // [batch_size, seq_len, num_heads, head_size] or [num_tokens, num_heads, head_size]
-  scalar_t* __restrict__ key,                   // [batch_size, seq_len, num_kv_heads, head_size] or [num_tokens, num_kv_heads, head_size]
-  const scalar_t* __restrict__ cos_cache,   // [max_position, rot_dim]
-  const scalar_t* __restrict__ sin_cache,   // [max_position, rot_dim]
+  scalar_t* __restrict__ query,                 // [num_tokens, num_heads, head_size]
+  scalar_t* __restrict__ key,                   // [num_tokens, num_heads, head_size]
+  const scalar_t* __restrict__ cos_cache,   // [max_position, 1, rot_dim]
+  const scalar_t* __restrict__ sin_cache,   // [max_position, 1, rot_dim]
   const int rot_dim,
   const int query_stride,
   const int key_stride,
@@ -77,18 +77,18 @@ __global__ void rotary_embedding_kernel(
 } // namespace vllm
 
 void rotary_embedding(
-  torch::Tensor& query,             // [batch_size, seq_len, num_heads * head_size] or [num_tokens, num_heads * head_size]
-  torch::Tensor& key,               // [batch_size, seq_len, num_kv_heads * head_size] or [num_tokens, num_kv_heads * head_size]
+  torch::Tensor& query,             // [num_tokens, num_heads, head_size]
+  torch::Tensor& key,               // [num_tokens, num_kv_heads, head_size]
   int head_size,
-  torch::Tensor& cos_cache,     // [max_position, rot_dim]
-  torch::Tensor& sin_cache,     // [max_position, rot_dim]
+  torch::Tensor& cos_cache,     // [max_position, 1, rot_dim]
+  torch::Tensor& sin_cache,     // [max_position, 1, rot_dim]
   bool is_neox) {
-  int num_tokens = query.numel() / query.size(-1);
-  int rot_dim = cos_cache.size(1);
-  int num_heads = query.size(-1) / head_size;
-  int num_kv_heads = key.size(-1) / head_size;
-  int query_stride = query.stride(-2);
-  int key_stride = key.stride(-2);
+  int num_tokens = query.size(0);
+  int rot_dim = cos_cache.size(2);
+  int num_heads = query.size(1);
+  int num_kv_heads = key.size(1);
+  int query_stride = query.stride(0);
+  int key_stride = key.stride(0);
 
   dim3 grid(num_tokens);
   dim3 block(std::min(num_heads * rot_dim / 2, 512));

@@ -12,14 +12,14 @@ inline __device__ void apply_rotary_embedding(
   const float* __restrict__ cos_ptr,
   const float* __restrict__ sin_ptr,
   int rot_offset,
-  int embed_dim)
+  int rot_dim)
 {
   int x_index, y_index;
   scalar_t cos, sin;
   if (IS_NEOX) {
     // GPT-NeoX style rotary embedding.
     x_index = rot_offset;
-    y_index = embed_dim + rot_offset;
+    y_index = rot_dim + rot_offset;
     cos = VLLM_LDG(cos_ptr + x_index);
     sin = VLLM_LDG(sin_ptr + x_index);
   } else {
@@ -51,26 +51,25 @@ __global__ void rotary_embedding_kernel(
   // Each thread block is responsible for one token.
   const int token_idx = blockIdx.x;
 
-  const int embed_dim = rot_dim;
-  const float* cos_ptr = cos_cache;
-  const float* sin_ptr = sin_cache;
+  const float* cos_ptr = cos_cache + token_idx * rot_dim;
+  const float* sin_ptr = sin_cache + token_idx * rot_dim;
 
-  const int nq = num_heads * embed_dim;
+  const int nq = num_heads * rot_dim;
   for (int i = threadIdx.x; i < nq; i += blockDim.x) {
-    const int head_idx = i / embed_dim;
+    const int head_idx = i / rot_dim;
     const int token_head = token_idx * query_stride + head_idx * head_size;
-    const int rot_offset = i % embed_dim;
+    const int rot_offset = i % rot_dim;
     apply_rotary_embedding<scalar_t, IS_NEOX>(query + token_head, cos_ptr,
-                                              sin_ptr, rot_offset, embed_dim);
+                                              sin_ptr, rot_offset, rot_dim);
   }
 
-  const int nk = num_kv_heads * embed_dim;
+  const int nk = num_kv_heads * rot_dim;
   for (int i = threadIdx.x; i < nk; i += blockDim.x) {
-    const int head_idx = i / embed_dim;
+    const int head_idx = i / rot_dim;
     const int token_head = token_idx * key_stride + head_idx * head_size;
-    const int rot_offset = i % embed_dim;
+    const int rot_offset = i % rot_dim;
     apply_rotary_embedding<scalar_t, IS_NEOX>(key + token_head, cos_ptr,
-                                              sin_ptr, rot_offset, embed_dim);
+                                              sin_ptr, rot_offset, rot_dim);
   }
 }
 

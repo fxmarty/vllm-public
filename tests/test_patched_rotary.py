@@ -50,14 +50,15 @@ def apply_rotary_vllm(query, key, cos, sin):
         True
     )
 
-cos = torch.rand(1, 1, 64).to("cuda").to(torch.float16)
-sin = torch.rand(1, 1, 64).to("cuda").to(torch.float16)
+seqlen = 8
+cos = torch.rand(seqlen, 1, 64).to("cuda").to(torch.float16)
+sin = torch.rand(seqlen, 1, 64).to("cuda").to(torch.float16)
 
 head_dim = 128
 num_heads = 32
 
-query_eager = torch.rand(1, num_heads, head_dim).to(torch.float16).to("cuda")
-key_eager = torch.rand(1, num_heads, head_dim).to(torch.float16).to("cuda")
+query_eager = torch.rand(seqlen, num_heads, head_dim).to(torch.float16).to("cuda")
+key_eager = torch.rand(seqlen, num_heads, head_dim).to(torch.float16).to("cuda")
 
 query_vllm = query_eager.clone()
 query_flash = query_eager.clone()
@@ -65,9 +66,9 @@ query_flash = query_eager.clone()
 key_vllm = key_eager.clone()
 key_flash = key_eager.clone()
 
-apply_rotary_eager(query_eager, key_eager, cos, sin)
-apply_rotary_flash(query_flash, key_flash, cos, sin)
-apply_rotary_vllm(query_vllm, key_vllm, cos.float(), sin.float())
+apply_rotary_eager(query_eager, key_eager, cos.clone(), sin.clone())
+apply_rotary_flash(query_flash, key_flash, cos.clone(), sin.clone())
+apply_rotary_vllm(query_vllm, key_vllm, cos.clone().float(), sin.clone().float())
 
 def check_diff(a, b, a_name, b_name):
     print(f"Allclose {a_name}, {b_name}: {torch.allclose(a, b)}; Abs reldiff: {((a - b).abs() / (a.abs() + 1e-12)).mean()}")

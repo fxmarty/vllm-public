@@ -9,8 +9,8 @@ namespace vllm {
 template<typename scalar_t, bool IS_NEOX>
 inline __device__ void apply_rotary_embedding(
   scalar_t* __restrict__ arr,
-  const scalar_t* __restrict__ cos_ptr,
-  const scalar_t* __restrict__ sin_ptr,
+  const float* __restrict__ cos_ptr,
+  const float* __restrict__ sin_ptr,
   int rot_offset,
   int embed_dim)
 {
@@ -40,8 +40,8 @@ template<typename scalar_t, bool IS_NEOX>
 __global__ void rotary_embedding_kernel(
   scalar_t* __restrict__ query,                 // [num_tokens, num_heads, head_size]
   scalar_t* __restrict__ key,                   // [num_tokens, num_heads, head_size]
-  const scalar_t* __restrict__ cos_cache,   // [max_position, 1, rot_dim]
-  const scalar_t* __restrict__ sin_cache,   // [max_position, 1, rot_dim]
+  const float* __restrict__ cos_cache,   // [max_position, 1, rot_dim]
+  const float* __restrict__ sin_cache,   // [max_position, 1, rot_dim]
   const int rot_dim,
   const int query_stride,
   const int key_stride,
@@ -51,9 +51,9 @@ __global__ void rotary_embedding_kernel(
   // Each thread block is responsible for one token.
   const int token_idx = blockIdx.x;
 
-  const int embed_dim = rot_dim / 2;
-  const scalar_t* cos_ptr = cos_cache;
-  const scalar_t* sin_ptr = sin_cache;
+  const int embed_dim = rot_dim;
+  const float* cos_ptr = cos_cache;
+  const float* sin_ptr = sin_cache;
 
   const int nq = num_heads * embed_dim;
   for (int i = threadIdx.x; i < nq; i += blockDim.x) {
@@ -93,6 +93,8 @@ void rotary_embedding(
   dim3 grid(num_tokens);
   dim3 block(std::min(num_heads * rot_dim / 2, 512));
   const cudaStream_t stream = at::cuda::getCurrentCUDAStream();
+
+  // Here we cast cos_cache and sin_cache to float, following what is done in flash-attn implementation of ROPE.
   VLLM_DISPATCH_FLOATING_TYPES(
     query.scalar_type(),
     "rotary_embedding",
@@ -101,8 +103,8 @@ void rotary_embedding(
         vllm::rotary_embedding_kernel<scalar_t, true><<<grid, block, 0, stream>>>(
           query.data_ptr<scalar_t>(),
           key.data_ptr<scalar_t>(),
-          cos_cache.data_ptr<scalar_t>(),
-          sin_cache.data_ptr<scalar_t>(),
+          cos_cache.data_ptr<float>(),
+          sin_cache.data_ptr<float>(),
           rot_dim,
           query_stride,
           key_stride,
@@ -113,8 +115,8 @@ void rotary_embedding(
         vllm::rotary_embedding_kernel<scalar_t, false><<<grid, block, 0, stream>>>(
           query.data_ptr<scalar_t>(),
           key.data_ptr<scalar_t>(),
-          cos_cache.data_ptr<scalar_t>(),
-          sin_cache.data_ptr<scalar_t>(),
+          cos_cache.data_ptr<float>(),
+          sin_cache.data_ptr<float>(),
           rot_dim,
           query_stride,
           key_stride,

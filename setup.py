@@ -172,15 +172,15 @@ attention_extension = CUDAExtension(
 ext_modules.append(attention_extension)
 
 # Positional encoding kernels.
-#positional_encoding_extension = CUDAExtension(
-    #name="vllm.pos_encoding_ops",
-    #sources=["csrc/pos_encoding.cpp", "csrc/pos_encoding_kernels.cu"],
-    #extra_compile_args={
-        #"cxx": CXX_FLAGS,
-        #"nvcc": NVCC_FLAGS,
-    #},
-#)
-#ext_modules.append(positional_encoding_extension)
+positional_encoding_extension = CUDAExtension(
+    name="vllm.pos_encoding_ops",
+    sources=["csrc/pos_encoding.cpp", "csrc/pos_encoding_kernels.cu"],
+    extra_compile_args={
+        "cxx": CXX_FLAGS,
+        "nvcc": NVCC_FLAGS,
+    },
+)
+ext_modules.append(positional_encoding_extension)
 
 # Layer normalization kernels.
 layernorm_extension = CUDAExtension(
